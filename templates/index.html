@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Vulnerability Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        input[type="text"] {
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .dropdown {
+            margin-top: 10px;
+        }
+        .dropdown-content {
+            margin-top: 5px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>URL Vulnerability Checker</h1>
+    <div class="container">
+        <form method="POST">
+            <label for="url">Enter URL:</label>
+            <input type="text" id="url" name="url" placeholder="https://example.com" required>
+            <button type="submit">Check URL</button>
+        </form>
+        {% if result %}
+        <div class="result">
+            {% if result.status == 'malicious' %}
+            <strong>Result:</strong> {{ result.positives }}/{{ result.total }} sources found the URL malicious.
+            <div class="dropdown">
+                <button onclick="toggleDropdown()">Show details</button>
+                <div id="dropdown-content" class="dropdown-content" style="display: none;">
+                    <ul>
+                    {% for detail in details %}
+                        <li><strong>{{ detail.source }}</strong>: {{ detail.result }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <script>
+                function toggleDropdown() {
+                    var content = document.getElementById("dropdown-content");
+                    if (content.style.display === "none") {
+                        content.style.display = "block";
+                    } else {
+                        content.style.display = "none";
+                    }
+                }
+            </script>
+            {% elif result.status == 'clean' %}
+            <strong>Result:</strong> The URL is clean. No malicious detections.
+            {% elif result.status == 'not_found' %}
+            <strong>Result:</strong> The URL was not found in VirusTotal's database.
+            {% else %}
+            <strong>Error:</strong> There was a problem contacting the VirusTotal API.
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
