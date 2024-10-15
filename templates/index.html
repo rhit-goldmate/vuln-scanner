@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>URL Vulnerability Checker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -50,15 +51,18 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-        .dropdown {
-            margin-top: 10px;
+        canvas {
+            margin-top: 20px;
         }
-        .dropdown-content {
-            margin-top: 5px;
+        .details {
+            margin-top: 20px;
+        }
+        .details-item {
+            margin-bottom: 10px;
             padding: 10px;
-            background-color: #f8f9fa;
             border: 1px solid #ddd;
             border-radius: 4px;
+            background-color: #ffffff;
         }
     </style>
 </head>
@@ -70,36 +74,95 @@
             <input type="text" id="url" name="url" placeholder="https://example.com" required>
             <button type="submit">Check URL</button>
         </form>
+
         {% if result %}
         <div class="result">
             {% if result.status == 'malicious' %}
             <strong>Result:</strong> {{ result.positives }}/{{ result.total }} sources found the URL malicious.
-            <div class="dropdown">
-                <button onclick="toggleDropdown()">Show details</button>
-                <div id="dropdown-content" class="dropdown-content" style="display: none;">
-                    <ul>
-                    {% for detail in details %}
-                        <li><strong>{{ detail.source }}</strong>: {{ detail.result }}</li>
-                    {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            <script>
-                function toggleDropdown() {
-                    var content = document.getElementById("dropdown-content");
-                    if (content.style.display === "none") {
-                        content.style.display = "block";
-                    } else {
-                        content.style.display = "none";
-                    }
-                }
-            </script>
             {% elif result.status == 'clean' %}
             <strong>Result:</strong> The URL is clean. No malicious detections.
             {% elif result.status == 'not_found' %}
             <strong>Result:</strong> The URL was not found in VirusTotal's database.
             {% else %}
             <strong>Error:</strong> There was a problem contacting the VirusTotal API.
+            {% endif %}
+
+            {% if result.status == 'malicious' %}
+            <h3>Threat Breakdown</h3>
+            <canvas id="threatChart" width="400" height="400"></canvas>
+
+            <div class="details" id="details"></div>
+
+            <script>
+                var resultData = {
+                    phishing: {{ result.phishing }},
+                    malicious: {{ result.malicious }},
+                    malware: {{ result.malware }},
+                    clean: {{ result.clean }},
+                    unrated: {{ result.unrated }}
+                };
+                
+                var detailedResults = {
+                    'phishing': {{ result.detailed_results.phishing | tojson }},
+                    'malicious': {{ result.detailed_results.malicious | tojson }},
+                    'malware': {{ result.detailed_results.malware | tojson }},
+                    'clean': {{ result.detailed_results.clean | tojson }},
+                    'unrated': {{ result.detailed_results.unrated | tojson }}
+                };
+
+                var ctx = document.getElementById('threatChart').getContext('2d');
+                var threatChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Phishing', 'Malicious', 'Malware', 'Unrated', 'Clean'],
+                        datasets: [{
+                            label: '# of Detections',
+                            data: [resultData.phishing, resultData.malicious, resultData.malware, resultData.unrated, resultData.clean],
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.2)',
+                                'rgba(54, 162, 235, 0.2)',
+                                'rgba(255, 206, 86, 0.2)',
+                                'rgba(153, 102, 255, 0.2)',
+                                'rgba(75, 192, 192, 0.2)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(75, 192, 192, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        onClick: function (e, activeEls) {
+                            if (activeEls.length > 0) {
+                                var chartIndex = activeEls[0].index;
+                                var selectedCategory = threatChart.data.labels[chartIndex].toLowerCase();
+                                var detailsDiv = document.getElementById('details');
+                                detailsDiv.innerHTML = '';
+
+                                if (detailedResults[selectedCategory].length > 0) {
+                                    detailedResults[selectedCategory].forEach(function (item) {
+                                        var detailItem = document.createElement('div');
+                                        detailItem.className = 'details-item';
+                                        detailItem.innerHTML = `<strong>Source:</strong> ${item.source} <br> <strong>Result:</strong> ${item.result}`;
+                                        detailsDiv.appendChild(detailItem);
+                                    });
+                                } else {
+                                    detailsDiv.innerHTML = '<div class="details-item">No detailed information available.</div>';
+                                }
+                            }
+                        }
+                    }
+                });
+            </script>
             {% endif %}
         </div>
         {% endif %}

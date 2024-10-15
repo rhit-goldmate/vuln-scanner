@@ -33,18 +33,63 @@ def check_url_virustotal(url, api_key):
             
             # If there are positive detections, collect details from the 'scans' field
             if positives > 0:
-                detailed_results = []
+                detailed_results = {
+                    'phishing': [],
+                    'malicious': [],
+                    'clean': [],
+                    'malware': [],
+                    'unrated': []
+                }
+                phishing_count = 0
+                malicious_count = 0
+                clean_count = 0
+                malware_count = 0
+                unrated_count = 0
+
                 scans = json_response.get('scans', {})
                 for source, details in scans.items():
                     if details.get('detected'):
-                        detailed_results.append({
+                        result = details.get('result', '').lower()
+                        if 'phishing' in result:
+                            phishing_count += 1
+                            detailed_results['phishing'].append({
+                                'source': source,
+                                'result': result
+                            })
+                        elif 'malicious' in result:
+                            malicious_count += 1
+                            detailed_results['malicious'].append({
+                                'source': source,
+                                'result': result
+                            })
+                        elif 'malware' in result:
+                            malware_count += 1
+                            detailed_results['malware'].append({
+                                'source': source,
+                                'result': result
+                            })
+                        else:
+                            unrated_count += 1
+                            detailed_results['unrated'].append({
+                                'source': source,
+                                'result': result
+                            })
+                    else:
+                        clean_count += 1
+                        detailed_results['clean'].append({
                             'source': source,
-                            'result': details.get('result')
+                            'result': 'clean'
                         })
+                
                 return {
                     'status': 'malicious',
                     'positives': positives,
                     'total': total,
+                    'phishing': phishing_count,
+                    'malicious': malicious_count,
+                    'malware': malware_count,
+                    'clean': clean_count,
+                    'unrated': unrated_count,
                     'detailed_results': detailed_results
                 }
             else:
@@ -60,12 +105,10 @@ def home():
     details = None
     if request.method == 'POST':
         url = request.form['url']
-        api_key = '60aeb4e8da17028ecc1a1ea5f826bca9bbf91c674eac754ef7c83bc047ed3187'
+        api_key = '60aeb4e8da17028ecc1a1ea5f826bca9bbf91c674eac754ef7c83bc047ed3187' 
         if is_valid_url(url):
             result = check_url_virustotal(url, api_key)
-            if result['status'] == 'malicious':
-                details = result['detailed_results']
-    return render_template('index.html', result=result, details=details)
+    return render_template('index.html', result=result)
 
 if __name__ == '__main__':
     app.run(debug=True)
